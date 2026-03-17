@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOVIE ZONE — Live Cinema</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #c9a84c;
+  --gold-dim: #7a5f2a;
+  --red: #c0392b;
+  --green: #27ae60;
+  --bg: #050508;
+  --surface: #0d0d14;
+  --surface2: #13131e;
+  --surface3: #1a1a28;
+  --text: #e8e0d0;
+  --muted: #6b6478;
+  --white: #f5f0e8;
+  --error: #e74c3c;
+  --success: #2ecc71;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: 'Cormorant Garamond', serif; overflow-x: hidden; }
+
+/* GRAIN */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9000;
+  opacity: 0.35;
+}
+
+/* PAGES */
+.page { display: none; min-height: 100vh; }
+.page.active { display: block; }
+
+/* ===== MODAL OVERLAY ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5,5,8,0.92);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+}
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid rgba(201,168,76,0.2);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalIn 0.4s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  padding: 32px 36px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.modal-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 5px;
+  color: var(--gold);
+}
+.modal-logo span { color: var(--red); }
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+}
+.modal-close:hover { color: var(--gold); }
+
+.modal-body { padding: 28px 36px 36px; }
+
+.modal-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  letter-spacing: 3px;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.modal-subtitle {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+/* STEPS INDICATOR */
+.steps-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+.step-dot {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+.step-dot.active { background: var(--gold); }
+.step-dot.done { background: var(--green); }
+
+.step-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.step-label::before { content: ''; width: 20px; height: 1px; background: var(--gold); }
+
+/* FORM ELEMENTS */
+.form-group { margin-bottom: 18px; position: relative; }
+
+.form-label {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.form-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(107,100,120,0.8);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.08);
+  outline: none;
+  padding: 14px 16px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  color: var(--text);
+  transition: border-color 0.3s;
+}
+
+.form-input:focus { border-color: var(--gold-dim); }
+.form-input.error { border-color: var(--error); }
+.form-input.success { border-color: var(--success); }
+
+.form-input::placeholder { color: var(--muted); font-style: italic; }
+
+.form-select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.08);
+  outline: none;
+  padding: 14px 16px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  color: var(--text);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%236b6478'%3E%3Cpath d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+}
+
+.form-select option { background: var(--surface2); color: var(--text); }
+
+.field-error {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--error);
+  margin-top: 5px;
+  display: none;
+}
+.field-error.show { display: block; }
+
+.password-wrap { position: relative; }
+.password-toggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.strength-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.strength-seg {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* UPLOAD AREA */
+.upload-area {
+  border: 1px dashed rgba(201,168,76,0.3);
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+.upload-area:hover { border-color: var(--gold); background: rgba(201,168,76,0.03); }
+.upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+.upload-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.upload-sub { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 4px; }
+.upload-preview {
+  display: none;
+  margin-top: 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--green);
+  letter-spacing: 2px;
+}
+
+/* OTP */
+.otp-wrap { display: flex; gap: 10px; justify-content: center; }
+.otp-input {
+  width: 48px;
+  height: 56px;
+  text-align: center;
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--white);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 2px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.otp-input:focus { border-color: var(--gold); }
+
+.otp-timer {
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 12px;
+  letter-spacing: 2px;
+}
+.otp-timer span { color: var(--gold); }
+
+/* CHECKBOX */
+.checkbox-wrap {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.checkbox-wrap input[type="checkbox"] { margin-top: 3px; accent-color: var(--gold); width: 16px; height: 16px; flex-shrink: 0; }
+.checkbox-label { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.checkbox-label a { color: var(--gold); text-decoration: none; }
+
+/* BUTTONS */
+.btn-full {
+  width: 100%;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 16px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.3s;
+  margin-top: 8px;
+}
+.btn-full:hover { background: var(--red); color: var(--white); }
+.btn-full:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-outline {
+  width: 100%;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 14px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 8px;
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn-text:hover { opacity: 0.7; }
+
+.modal-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* SUCCESS STATE */
+.success-state {
+  text-align: center;
+  padding: 20px 0;
+}
+.success-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  display: block;
+  animation: bounceIn 0.5s ease;
+}
+@keyframes bounceIn {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.success-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.success-msg { font-size: 16px; font-style: italic; color: var(--muted); }
+
+/* KYC BADGE */
+.kyc-info {
+  background: rgba(201,168,76,0.06);
+  border: 1px solid rgba(201,168,76,0.2);
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.kyc-icon { font-size: 24px; flex-shrink: 0; }
+.kyc-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.kyc-text strong { color: var(--gold); font-style: normal; }
+
+/* PROGRESS BADGE */
+.progress-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(39,174,96,0.1);
+  border: 1px solid rgba(39,174,96,0.3);
+  padding: 6px 12px;
+  margin-bottom: 16px;
+}
+.progress-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.progress-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--green);
+  text-transform: uppercase;
+}
+
+/* ===== NAV ===== */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 60px;
+  background: linear-gradient(to bottom, rgba(5,5,8,0.98), transparent);
+  border-bottom: 1px solid rgba(201,168,76,0.05);
+}
+
+.nav-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(201,168,76,0.3);
+  cursor: pointer;
+}
+.nav-logo span { color: var(--red); }
+
+nav ul { display: flex; gap: 36px; list-style: none; }
+nav ul a {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.3s;
+  cursor: pointer;
+}
+nav ul a:hover, nav ul a.active { color: var(--gold); }
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(192,57,43,0.15);
+  border: 1px solid rgba(192,57,43,0.4);
+  padding: 4px 10px;
+  margin-left: 4px;
+}
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: blink 1s ease infinite; }
+.live-text { font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: 2px; color: var(--red); text-transform: uppercase; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.nav-actions { display: flex; gap: 12px; align-items: center; }
+
+.btn-nav {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-login { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); }
+.btn-login:hover { border-color: var(--gold); color: var(--gold); }
+.btn-signup { background: var(--gold); border: 1px solid var(--gold); color: var(--bg); font-weight: 700; }
+.btn-signup:hover { background: var(--red); border-color: var(--red); color: var(--white); }
+.btn-user { background: var(--surface2); border: 1px solid rgba(201,168,76,0.3); color: var(--gold); display: none; }
+
+/* ===== HERO ===== */
+.hero {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 70% 50%, rgba(192,57,43,0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 20% 80%, rgba(201,168,76,0.06) 0%, transparent 50%),
+    linear-gradient(135deg, #050508 0%, #0d0a12 50%, #050508 100%);
+}
+
+.hero-lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(201,168,76,0.025) 80px, rgba(201,168,76,0.025) 81px);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 120px 60px 80px;
+  max-width: 850px;
+}
+
+.hero-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 6px;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: fadeUp 0.8s ease 0.2s both;
+}
+.hero-eyebrow::before { content:''; width:40px; height:1px; background:var(--red); }
+
+h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(70px, 11vw, 150px);
+  line-height: 0.9;
+  letter-spacing: 4px;
+  color: var(--white);
+  animation: fadeUp 0.8s ease 0.4s both;
+}
+h1 .gold { color: var(--gold); }
+h1 .outline { -webkit-text-stroke: 1px rgba(255,255,255,0.18); color: transparent; }
+
+.hero-sub {
+  font-size: 20px;
+  font-style: italic;
+  color: var(--muted);
+  margin: 24px 0 36px;
+  font-weight: 300;
+  animation: fadeUp 0.8s ease 0.6s both;
+}
+
+.hero-cta { display:flex; gap:16px; align-items:center; animation: fadeUp 0.8s ease 0.8s both; }
+
+.btn-hero-primary {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 16px 36px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.3s;
+}
+.btn-hero-primary:hover { background: var(--red); color: var(--white); }
+
+.btn-hero-ghost {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 16px 36px;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.btn-hero-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+.hero-stats {
+  display: flex;
+  gap: 48px;
+  margin-top: 60px;
+  animation: fadeUp 0.8s ease 1s both;
+}
+.stat-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 40px;
+  color: var(--gold);
+  line-height: 1;
+}
+.stat-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.hero-right {
+  position: absolute;
+  right: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  animation: fadeUp 1s ease 1.1s both;
+}
+
+/* TICKER */
+.ticker { background: var(--gold); padding: 11px 0; overflow: hidden; white-space: nowrap; }
+.ticker-inner { display: inline-flex; gap: 60px; animation: ticker 25s linear infinite; }
+.ticker-item {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  letter-spacing: 4px;
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ticker-dot { width: 5px; height: 5px; background: var(--red); border-radius: 50%; flex-shrink: 0; }
+@keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* ===== LIVE STREAM ===== */
+.live-section { padding: 80px 60px; background: var(--surface); }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+.section-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  letter-spacing: 4px;
+  color: var(--white);
+}
+.section-line { flex:1; height:1px; background: linear-gradient(to right, rgba(201,168,76,0.3), transparent); margin: 0 30px; }
+.section-tag { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 4px; color: var(--gold-dim); text-transform: uppercase; }
+
+.stream-player {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16/9;
+  max-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.stream-bg-gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #1a0a2e 0%, #050508 100%);
+}
+
+.stream-scanlines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.stream-content { position: relative; z-index: 3; text-align: center; }
+.stream-film-icon { font-size: 80px; opacity: 0.3; display: block; margin-bottom: 16px; }
+.stream-cta-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  letter-spacing: 4px;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+.stream-cta-sub { font-size: 18px; font-style: italic; color: var(--muted); margin-bottom: 24px; }
+
+.stream-play-btn {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--red);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 0 40px rgba(192,57,43,0.5);
+}
+.stream-play-btn:hover { transform: scale(1.1); box-shadow: 0 0 60px rgba(192,57,43,0.7); }
+.play-tri { width:0; height:0; border-top: 14px solid transparent; border-bottom: 14px solid transparent; border-left: 24px solid white; margin-left: 4px; }
+
+/* STREAM OVERLAY BADGES */
+.stream-top-bar {
+  position: absolute;
+  top: 16px; left: 16px; right: 16px;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(192,57,43,0.9);
+  padding: 5px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: white;
+  text-transform: uppercase;
+}
+.live-indicator .dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: blink 1s infinite; }
+
+.viewer-count {
+  background: rgba(5,5,8,0.8);
+  padding: 5px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
+.stream-bottom-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 4;
+  padding: 12px 20px;
+  background: linear-gradient(to top, rgba(5,5,8,0.9), transparent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.now-playing-tag {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.now-playing-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--white);
+}
+
+.stream-controls { display: flex; gap: 12px; }
+.ctrl-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--white);
+  padding: 6px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ctrl-btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+
+/* STREAM SCHEDULE */
+.stream-schedule { margin-top: 24px; }
+.schedule-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.schedule-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.schedule-item {
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 16px;
+  transition: border-color 0.3s;
+  cursor: pointer;
+}
+.schedule-item:hover { border-color: rgba(201,168,76,0.3); }
+.schedule-item.live-now { border-color: rgba(192,57,43,0.4); background: rgba(192,57,43,0.05); }
+.sch-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.sch-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.sch-genre { font-size: 12px; font-style: italic; color: var(--muted); }
+
+/* ===== MOVIES GRID ===== */
+.movies-section { padding: 80px 60px; }
+
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.movie-card {
+  position: relative;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: border-color 0.3s;
+}
+.movie-card:first-child { grid-column: span 2; aspect-ratio: auto; min-height: 420px; }
+.movie-card:hover { border-color: rgba(201,168,76,0.25); }
+
+.card-bg { position: absolute; inset: 0; transition: transform 0.6s ease; }
+.movie-card:hover .card-bg { transform: scale(1.06); }
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(5,5,8,0.96) 0%, rgba(5,5,8,0.3) 50%, transparent 100%);
+}
+
+.card-content {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 20px;
+}
+
+.card-genre {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.card-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; color: var(--white); line-height: 1; }
+.card-title.xl { font-size: 42px; }
+.card-year { font-size: 12px; font-style: italic; color: var(--muted); margin-top: 3px; }
+.card-score { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--gold); margin-top: 6px; }
+
+.poster-1 { background: linear-gradient(135deg, #1a0a2e, #2d0b1a, #0a0a1a); }
+.poster-2 { background: linear-gradient(135deg, #0a1a2e, #1a2d1a); }
+.poster-3 { background: linear-gradient(135deg, #2e1a0a, #1a0a0a); }
+.poster-4 { background: linear-gradient(135deg, #0a2e1a, #0a1a2e); }
+.poster-5 { background: linear-gradient(135deg, #2e0a1a, #1a1a0a); }
+.poster-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 70px; opacity: 0.12; }
+.movie-card:first-child .poster-icon { font-size: 120px; }
+
+/* CATEGORIES */
+.cat-section { padding: 60px; background: var(--surface2); }
+.cat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.cat-item {
+  padding: 28px 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.cat-item::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--gold); transform: scaleX(0); transition: transform 0.3s; }
+.cat-item:hover { border-color: rgba(201,168,76,0.3); }
+.cat-item:hover::after { transform: scaleX(1); }
+.cat-icon { font-size: 30px; margin-bottom: 10px; display: block; }
+.cat-name { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; color: var(--white); }
+.cat-count { font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: 2px; color: var(--muted); margin-top: 3px; }
+
+/* SEARCH */
+.search-section { background: var(--surface); padding: 60px; text-align: center; }
+.search-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 5px; color: var(--gold-dim); text-transform: uppercase; margin-bottom: 12px; }
+.search-title { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 4px; color: var(--white); margin-bottom: 36px; }
+.search-wrap { display: flex; max-width: 680px; margin: 0 auto; border: 1px solid rgba(201,168,76,0.3); }
+.search-input { flex: 1; background: transparent; border: none; outline: none; padding: 16px 22px; font-family: 'Cormorant Garamond', serif; font-size: 18px; font-style: italic; color: var(--text); cursor: text; }
+.search-input::placeholder { color: var(--muted); }
+.search-btn { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; padding: 16px 28px; background: var(--gold); color: var(--bg); border: none; cursor: pointer; font-weight: 700; transition: background 0.3s; }
+.search-btn:hover { background: var(--red); color: white; }
+
+/* FOOTER */
+footer { padding: 50px 60px; background: var(--bg); border-top: 1px solid rgba(255,255,255,0.04); display: flex; justify-content: space-between; align-items: center; }
+.footer-logo { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 5px; color: var(--gold); }
+.footer-logo span { color: var(--red); }
+.footer-copy { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); }
+.footer-links { display: flex; gap: 28px; list-style: none; }
+.footer-links a { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-decoration: none; text-transform: uppercase; transition: color 0.3s; cursor: pointer; }
+.footer-links a:hover { color: var(--gold); }
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 9999;
+  background: var(--surface);
+  border: 1px solid rgba(201,168,76,0.3);
+  padding: 16px 24px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease;
+  max-width: 320px;
+}
+.toast.show { display: flex; }
+@keyframes slideIn { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
+.toast-icon { font-size: 20px; }
+.toast-msg { font-size: 14px; font-style: italic; color: var(--text); }
+
+@keyframes fadeUp { from { opacity:0; transform: translateY(28px); } to { opacity:1; transform: translateY(0); } }
+
+/* Responsive */
+@media(max-width:768px){
+  nav { padding: 16px 20px; }
+  nav ul { display: none; }
+  .hero-content { padding: 100px 24px 60px; }
+  .live-section, .movies-section, .cat-section, .search-section, footer { padding: 50px 24px; }
+  .movies-grid { grid-template-columns: 1fr 1fr; }
+  .movie-card:first-child { grid-column: span 2; }
+  .cat-grid { grid-template-columns: repeat(3, 1fr); }
+  .schedule-grid { grid-template-columns: 1fr; }
+  .modal { margin: 16px; max-height: 95vh; }
+  .modal-body { padding: 20px 24px 28px; }
+  .modal-header { padding: 24px 24px 16px; }
+  .form-row { grid-template-columns: 1fr; }
+  footer { flex-direction: column; gap: 16px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✅</span>
+  <span class="toast-msg" id="toastMsg">Success!</span>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo" onclick="goHome()">MOVIE<span>ZONE</span></div>
+  <ul>
+    <li><a onclick="goHome()">Home</a></li>
+    <li><a onclick="scrollToLive()">Live <div class="live-badge" style="display:inline-flex"><span class="live-dot"></span><span class="live-text">Live</span></div></a></li>
+    <li><a onclick="scrollToMovies()">Movies</a></li>
+    <li><a onclick="scrollToGenres()">Genres</a></li>
+    <li><a>Top Rated</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="btn-nav btn-login" onclick="openLogin()">Sign In</button>
+    <button class="btn-nav btn-signup" onclick="openSignup()">Join Free</button>
+    <button class="btn-nav btn-user" id="userBtn" onclick="showUserMenu()">👤 My Account</button>
+  </div>
+</nav>
+
+<!-- ======= LOGIN MODAL ======= -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-logo">MOVIE<span>ZONE</span></div>
+      <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-title">WELCOME BACK</div>
+      <p class="modal-subtitle">Sign in to your cinema account</p>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <span class="form-hint">Enter the email you registered with</span>
+        <input class="form-input" id="loginEmail" type="email" placeholder="your@email.com" oninput="validateLoginEmail(this)">
+        <div class="field-error" id="loginEmailErr">Please enter a valid email address</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <span class="form-hint">Must be at least 8 characters</span>
+        <div class="password-wrap">
+          <input class="form-input" id="loginPass" type="password" placeholder="••••••••" oninput="validateLoginPass(this)">
+          <button class="password-toggle" onclick="togglePass('loginPass', this)">👁</button>
+        </div>
+        <div class="field-error" id="loginPassErr">Password must be at least 8 characters</div>
+      </div>
+
+      <div style="text-align:right; margin-bottom:16px;">
+        <button class="btn-text">Forgot Password?</button>
+      </div>
+
+      <button class="btn-full" onclick="handleLogin()">Sign In to MovieZone</button>
+      <button class="btn-outline" onclick="closeModal('loginModal'); openSignup()">Create New Account</button>
+
+      <div class="modal-footer">
+        By signing in you agree to our <a href="#" style="color:var(--gold)">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======= SIGNUP MODAL ======= -->
+<div class="modal-overlay" id="signupModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-logo">MOVIE<span>ZONE</span></div>
+      <button class="modal-close" onclick="closeModal('signupModal')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Step indicators -->
+      <div class="steps-bar">
+        <div class="step-dot active" id="sd1"></div>
+        <div class="step-dot" id="sd2"></div>
+        <div class="step-dot" id="sd3"></div>
+        <div class="step-dot" id="sd4"></div>
+      </div>
+
+      <!-- STEP 1: Account Details -->
+      <div id="step1">
+        <div class="step-label">Step 1 of 4</div>
+        <div class="modal-title">CREATE ACCOUNT</div>
+        <p class="modal-subtitle">Set up your MovieZone profile</p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <span class="form-hint">As it appears on your ID</span>
+            <input class="form-input" id="s1First" type="text" placeholder="John" oninput="validateRequired(this, 's1FirstErr', 'First name is required')">
+            <div class="field-error" id="s1FirstErr">First name is required</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <span class="form-hint">As it appears on your ID</span>
+            <input class="form-input" id="s1Last" type="text" placeholder="Doe" oninput="validateRequired(this, 's1LastErr', 'Last name is required')">
+            <div class="field-error" id="s1LastErr">Last name is required</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <span class="form-hint">We'll send your verification code here</span>
+          <input class="form-input" id="s1Email" type="email" placeholder="your@email.com" oninput="validateEmail(this, 's1EmailErr')">
+          <div class="field-error" id="s1EmailErr">Please enter a valid email address</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <span class="form-hint">Include country code e.g. +256 700 000 000</span>
+          <input class="form-input" id="s1Phone" type="tel" placeholder="+256 700 000 000" oninput="validatePhone(this, 's1PhoneErr')">
+          <div class="field-error" id="s1PhoneErr">Enter a valid phone number with country code</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <span class="form-hint">Min 8 characters — mix letters, numbers, symbols</span>
+          <div class="password-wrap">
+            <input class="form-input" id="s1Pass" type="password" placeholder="••••••••" oninput="checkStrength(this)">
+            <button class="password-toggle" onclick="togglePass('s1Pass', this)">👁</button>
+          </div>
+          <div class="strength-bar">
+            <div class="strength-seg" id="str1"></div>
+            <div class="strength-seg" id="str2"></div>
+            <div class="strength-seg" id="str3"></div>
+            <div class="strength-seg" id="str4"></div>
+          </div>
+          <div class="field-error" id="s1PassErr">Password must be at least 8 characters</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input class="form-input" id="s1Pass2" type="password" placeholder="••••••••" oninput="validateMatch(this, 's1PassErr2')">
+          <div class="field-error" id="s1PassErr2">Passwords do not match</div>
+        </div>
+
+        <button class="btn-full" onclick="goStep2()">Continue →</button>
+        <button class="btn-outline" onclick="closeModal('signupModal'); openLogin()">Already have an account?</button>
+      </div>
+
+      <!-- STEP 2: Email Verification OTP -->
+      <div id="step2" style="display:none">
+        <div class="step-label">Step 2 of 4</div>
+        <div class="modal-title">VERIFY EMAIL</div>
+        <p class="modal-subtitle">We sent a 6-digit code to your email</p>
+
+        <div class="kyc-info">
+          <span class="kyc-icon">📧</span>
+          <div class="kyc-text">
+            A verification code has been sent to <strong id="emailDisplay">your email</strong>. Enter it below to confirm your identity and secure your account.
+          </div>
+        </div>
+
+        <div class="form-group" style="text-align:center">
+          <label class="form-label" style="text-align:center; display:block; margin-bottom:16px">Enter 6-Digit Code</label>
+          <div class="otp-wrap">
+            <input class="otp-input" maxlength="1" oninput="otpNext(this, 1)" id="otp1">
+            <input class="otp-input" maxlength="1" oninput="otpNext(this, 2)" id="otp2">
+            <input class="otp-input" maxlength="1" oninput="otpNext(this, 3)" id="otp3">
+            <input class="otp-input" maxlength="1" oninput="otpNext(this, 4)" id="otp4">
+            <input class="otp-input" maxlength="1" oninput="otpNext(this, 5)" id="otp5">
+            <input class="otp-input" maxlength="1" oninput="otpNext(this, 6)" id="otp6">
+          </div>
+          <div class="otp-timer">Code expires in <span id="otpTimer">05:00</span> · <button class="btn-text" onclick="restartTimer()">Resend</button></div>
+        </div>
+
+        <button class="btn-full" onclick="verifyOTP()">Verify & Continue →</button>
+        <button class="btn-outline" onclick="backStep(1)">← Back</button>
+      </div>
+
+      <!-- STEP 3: Personal Info -->
+      <div id="step3" style="display:none">
+        <div class="step-label">Step 3 of 4</div>
+        <div class="modal-title">YOUR PROFILE</div>
+        <p class="modal-subtitle">Tell us a bit more about yourself</p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <span class="form-hint">Must be 18+ to access all content</span>
+            <input class="form-input" id="s3Dob" type="date" oninput="validateAge(this)">
+            <div class="field-error" id="s3DobErr">You must be at least 18 years old</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <span class="form-hint">For content personalisation</span>
+            <select class="form-select" id="s3Gender">
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Country of Residence</label>
+          <span class="form-hint">Determines content availability in your region</span>
+          <select class="form-select" id="s3Country">
+            <option value="">Select country</option>
+            <option>Uganda</option><option>Kenya</option><option>Tanzania</option>
+            <option>Nigeria</option><option>South Africa</option><option>Ghana</option>
+            <option>United States</option><option>United Kingdom</option>
+            <option>Canada</option><option>Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Favourite Genres</label>
+          <span class="form-hint">Choose up to 3 — we'll personalise your feed</span>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px" id="genreOptions">
+            <span class="genre-chip" onclick="toggleGenre(this)">Action</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Drama</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Thriller</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Sci-Fi</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Horror</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Comedy</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Romance</span>
+            <span class="genre-chip" onclick="toggleGenre(this)">Documentary</span>
+          </div>
+        </div>
+
+        <style>
+          .genre-chip {
+            font-family: 'Space Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 7px 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+          }
+          .genre-chip.selected { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.08); }
+        </style>
+
+        <button class="btn-full" onclick="goStep4()">Continue to Verification →</button>
+        <button class="btn-outline" onclick="backStep(2)">← Back</button>
+      </div>
+
+      <!-- STEP 4: KYC -->
+      <div id="step4" style="display:none">
+        <div class="step-label">Step 4 of 4 — Identity Verification</div>
+        <div class="modal-title">KYC VERIFICATION</div>
+        <p class="modal-subtitle">Required to unlock all features & live streaming</p>
+
+        <div class="kyc-info">
+          <span class="kyc-icon">🔐</span>
+          <div class="kyc-text">
+            <strong>Why do we need this?</strong> MovieZone is a licensed streaming platform. KYC (Know Your Customer) verification ensures a safe, age-appropriate experience for all users and compliance with digital content regulations.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ID Document Type</label>
+          <span class="form-hint">Select the type of government-issued ID you will upload</span>
+          <select class="form-select" id="kycDocType" onchange="updateDocHint()">
+            <option value="">Select document type</option>
+            <option value="national_id">National ID Card</option>
+            <option value="passport">International Passport</option>
+            <option value="drivers">Driver's Licence</option>
+            <option value="voter">Voter Registration Card</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="docHintBox" style="display:none">
+          <div class="kyc-info">
+            <span class="kyc-icon">💡</span>
+            <div class="kyc-text" id="docHintText"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ID Number</label>
+          <span class="form-hint">Enter the unique number on your selected document</span>
+          <input class="form-input" id="kycIdNum" type="text" placeholder="e.g. CM12345678" oninput="validateRequired(this, 'kycIdErr', 'ID number is required')">
+          <div class="field-error" id="kycIdErr">ID number is required</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Upload Front of Document</label>
+          <span class="form-hint">Clear photo or scan — JPG, PNG or PDF · Max 5MB</span>
+          <div class="upload-area">
+            <input type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="handleUpload(this, 'frontPreview')">
+            <span class="upload-icon">📄</span>
+            <div class="upload-text">Click to upload front side</div>
+            <div class="upload-sub">or drag & drop your file here</div>
+            <div class="upload-preview" id="frontPreview"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Upload Back of Document</label>
+          <span class="form-hint">Required for ID cards and driver's licences</span>
+          <div class="upload-area">
+            <input type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="handleUpload(this, 'backPreview')">
+            <span class="upload-icon">📄</span>
+            <div class="upload-text">Click to upload back side</div>
+            <div class="upload-sub">or drag & drop your file here</div>
+            <div class="upload-preview" id="backPreview"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Selfie with Document</label>
+          <span class="form-hint">Hold your ID next to your face — must be clearly visible</span>
+          <div class="upload-area">
+            <input type="file" accept=".jpg,.jpeg,.png" onchange="handleUpload(this, 'selfiePreview')">
+            <span class="upload-icon">🤳</span>
+            <div class="upload-text">Upload your selfie</div>
+            <div class="upload-sub">Face + document clearly visible</div>
+            <div class="upload-preview" id="selfiePreview"></div>
+          </div>
+        </div>
+
+        <div class="checkbox-wrap">
+          <input type="checkbox" id="kycConsent">
+          <label class="checkbox-label" for="kycConsent">
+            I confirm that the documents I am submitting are genuine and belong to me. I agree to MovieZone's <a href="#">Privacy Policy</a> and consent to identity verification processing.
+          </label>
+        </div>
+
+        <div class="checkbox-wrap">
+          <input type="checkbox" id="kycAge">
+          <label class="checkbox-label" for="kycAge">
+            I confirm that I am at least 18 years of age and am legally permitted to access this platform.
+          </label>
+        </div>
+
+        <button class="btn-full" onclick="submitKYC()">Complete Registration 🎬</button>
+        <button class="btn-outline" onclick="backStep(3)">← Back</button>
+      </div>
+
+      <!-- SUCCESS -->
+      <div id="stepSuccess" style="display:none">
+        <div class="success-state">
+          <span class="success-icon">🎬</span>
+          <div class="success-title">WELCOME TO MOVIEZONE!</div>
+          <p class="success-msg">Your account is being verified. You'll receive an email within 24 hours. You can now explore the platform!</p>
+          <div class="progress-badge" style="margin: 20px auto; width: fit-content;">
+            <span class="progress-dot"></span>
+            <span class="progress-label">KYC Under Review</span>
+          </div>
+          <button class="btn-full" onclick="completeSignup()" style="margin-top: 16px;">Start Watching →</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN PAGE ===== -->
+<div class="page active" id="mainPage">
+
+  <!-- HERO -->
+  <section class="hero" id="heroTop">
+    <div class="hero-bg"></div>
+    <div class="hero-lines"></div>
+    <div class="hero-content">
+      <div class="hero-eyebrow">
+        <div class="live-badge"><span class="live-dot"></span><span class="live-text">Live Now</span></div>
+        Cinema Redefined
+      </div>
+      <h1>
+        MOVIE<br>
+        <span class="gold">ZONE</span><br>
+        <span class="outline">LIVE</span>
+      </h1>
+      <p class="hero-sub">Stream live cinema. Watch on demand. Anywhere, anytime.</p>
+      <div class="hero-cta">
+        <button class="btn-hero-primary" onclick="openSignup()">Start Watching Free</button>
+        <button class="btn-hero-ghost" onclick="scrollToLive()">
+          <span style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:9px solid currentColor"></span>
+          Watch Live Now
+        </button>
+      </div>
+      <div class="hero-stats">
+        <div><div class="stat-num">10K+</div><div class="stat-label">Films</div></div>
+        <div><div class="stat-num">4.8K</div><div class="stat-label">Live Now</div></div>
+        <div><div class="stat-num">50+</div><div class="stat-label">Channels</div></div>
+        <div><div class="stat-num">140+</div><div class="stat-label">Countries</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TICKER -->
+  <div class="ticker">
+    <div class="ticker-inner">
+      <div class="ticker-item"><span class="ticker-dot"></span>OPPENHEIMER</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>DUNE: PART TWO</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>THE HOLDOVERS</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>PAST LIVES</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>KILLERS OF THE FLOWER MOON</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>POOR THINGS</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>ANATOMY OF A FALL</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>THE ZONE OF INTEREST</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>OPPENHEIMER</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>DUNE: PART TWO</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>THE HOLDOVERS</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>PAST LIVES</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>KILLERS OF THE FLOWER MOON</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>POOR THINGS</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>ANATOMY OF A FALL</div>
+      <div class="ticker-item"><span class="ticker-dot"></span>THE ZONE OF INTEREST</div>
+    </div>
+  </div>
+
+  <!-- LIVE STREAM -->
+  <section class="live-section" id="liveSection">
+    <div class="section-header">
+      <div class="section-title">🔴 LIVE STREAM</div>
+      <div class="section-line"></div>
+      <div class="section-tag">On Air Now</div>
+    </div>
+
+    <div class="stream-player">
+      <div class="stream-bg-gradient"></div>
+      <div class="stream-scanlines"></div>
+
+      <div class="stream-top-bar">
+        <div class="live-indicator"><span class="dot"></span> LIVE</div>
+        <div class="viewer-count">👁 4,821 watching</div>
+      </div>
+
+      <div class="stream-content">
+        <button class="stream-play-btn" onclick="handlePlayStream()">
+          <div class="play-tri"></div>
+        </button>
+        <div class="stream-cta-title">WATCH LIVE</div>
+        <div class="stream-cta-sub">Sign in to start streaming</div>
+      </div>
+
+      <div class="stream-bottom-bar">
+        <div>
+          <div class="now-playing-tag">Now Playing</div>
+          <div class="now-playing-title">DUNE: PART TWO — Official Broadcast</div>
+        </div>
+        <div class="stream-controls">
+          <button class="ctrl-btn">HD</button>
+          <button class="ctrl-btn">CC</button>
+          <button class="ctrl-btn">⛶ Full</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stream-schedule">
+      <div class="schedule-title">📅 Today's Schedule</div>
+      <div class="schedule-grid">
+        <div class="schedule-item live-now">
+          <div class="sch-time">🔴 NOW — 22:00</div>
+          <div class="sch-title">DUNE: PART TWO</div>
+          <div class="sch-genre">Sci-Fi · Epic</div>
+        </div>
+        <div class="schedule-item">
+          <div class="sch-time">22:00 — 00:30</div>
+          <div class="sch-title">OPPENHEIMER</div>
+          <div class="sch-genre">Drama · History</div>
+        </div>
+        <div class="schedule-item">
+          <div class="sch-time">00:30 — 02:45</div>
+          <div class="sch-title">KILLERS OF FLOWER MOON</div>
+          <div class="sch-genre">Crime · Epic</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOVIES -->
+  <section class="movies-section" id="moviesSection">
+    <div class="section-header">
+      <div class="section-title">TRENDING NOW</div>
+      <div class="section-line"></div>
+      <div class="section-tag">This Week</div>
+    </div>
+    <div class="movies-grid">
+      <div class="movie-card" onclick="requireLogin()">
+        <div class="card-bg poster-1"></div>
+        <div class="poster-icon">🎬</div>
+        <div class="card-overlay"></div>
+        <div class="card-content">
+          <div class="card-genre">Sci-Fi · Thriller</div>
+          <div class="card-title xl">DUNE:<br>PART TWO</div>
+          <div class="card-year">Denis Villeneuve · 2024</div>
+          <div class="card-score">★ 8.8</div>
+        </div>
+      </div>
+      <div class="movie-card" onclick="requireLogin()">
+        <div class="card-bg poster-2"></div>
+        <div class="poster-icon">💣</div>
+        <div class="card-overlay"></div>
+        <div class="card-content">
+          <div class="card-genre">Drama · History</div>
+          <div class="card-title">OPPENHEIMER</div>
+          <div class="card-year">Christopher Nolan · 2023</div>
+          <div class="card-score">★ 8.9</div>
+        </div>
+      </div>
+      <div class="movie-card" onclick="requireLogin()">
+        <div class="card-bg poster-3"></div>
+        <div class="poster-icon">🌺</div>
+        <div class="card-overlay"></div>
+        <div class="card-content">
+          <div class="card-genre">Crime · Drama</div>
+          <div class="card-title">FLOWER MOON</div>
+          <div class="card-year">Martin Scorsese · 2023</div>
+          <div class="card-score">★ 7.7</div>
+        </div>
+      </div>
+      <div class="movie-card" onclick="requireLogin()">
+        <div class="card-bg poster-4"></div>
+        <div class="poster-icon">🦋</div>
+        <div class="card-overlay"></div>
+        <div class="card-content">
+          <div class="card-genre">Fantasy · Drama</div>
+          <div class="card-title">POOR THINGS</div>
+          <div class="card-year">Yorgos Lanthimos · 2023</div>
+          <div class="card-score">★ 8.0</div>
+        </div>
+      </div>
+      <div class="movie-card" onclick="requireLogin()">
+        <div class="card-bg poster-5"></div>
+        <div class="poster-icon">❤️</div>
+        <div class="card-overlay"></div>
+        <div class="card-content">
+          <div class="card-genre">Romance · Drama</div>
+          <div class="card-title">PAST LIVES</div>
+          <div class="card-year">Celine Song · 2023</div>
+          <div class="card-score">★ 7.9</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GENRES -->
+  <section class="cat-section" id="genresSection">
+    <div class="section-header">
+      <div class="section-title">BROWSE GENRES</div>
+      <div class="section-line"></div>
+      <div class="section-tag">All Categories</div>
+    </div>
+    <div class="cat-grid">
+      <div class="cat-item"><span class="cat-icon">💀</span><div class="cat-name">Horror</div><div class="cat-count">1,240 films</div></div>
+      <div class="cat-item"><span class="cat-icon">🚀</span><div class="cat-name">Sci-Fi</div><div class="cat-count">890 films</div></div>
+      <div class="cat-item"><span class="cat-icon">🔫</span><div class="cat-name">Action</div><div class="cat-count">2,100 films</div></div>
+      <div class="cat-item"><span class="cat-icon">🎭</span><div class="cat-name">Drama</div><div class="cat-count">3,400 films</div></div>
+      <div class="cat-item"><span class="cat-icon">🕵️</span><div class="cat-name">Thriller</div><div class="cat-count">1,560 films</div></div>
+      <div class="cat-item"><span class="cat-icon">😂</span><div class="cat-name">Comedy</div><div class="cat-count">1,800 films</div></div>
+    </div>
+  </section>
+
+  <!-- SEARCH -->
+  <div class="search-section">
+    <div class="search-label">Find Your Film</div>
+    <div class="search-title">WHAT WILL YOU WATCH?</div>
+    <div class="search-wrap">
+      <input class="search-input" type="text" placeholder="Search by title, director, actor...">
+      <button class="search-btn">Search</button>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">MOVIE<span>ZONE</span></div>
+    <ul class="footer-links">
+      <li><a>About</a></li>
+      <li><a>Privacy</a></li>
+      <li><a>Terms</a></li>
+      <li><a>Contact</a></li>
+    </ul>
+    <div class="footer-copy">© 2026 MovieZone · All rights reserved</div>
+  </footer>
+
+</div><!-- /mainPage -->
+
+<script>
+// ======= STATE =======
+let currentUser = null;
+let otpTimerInterval = null;
+let signupStep = 1;
+
+// ======= MODAL CONTROLS =======
+function openLogin() {
+  document.getElementById('loginModal').classList.add('active');
+}
+function openSignup() {
+  document.getElementById('signupModal').classList.add('active');
+  showStep(1);
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// Close on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target === m) m.classList.remove('active'); });
+});
+
+// ======= NAVIGATION =======
+function goHome() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function scrollToLive() { document.getElementById('liveSection').scrollIntoView({ behavior: 'smooth' }); }
+function scrollToMovies() { document.getElementById('moviesSection').scrollIntoView({ behavior: 'smooth' }); }
+function scrollToGenres() { document.getElementById('genresSection').scrollIntoView({ behavior: 'smooth' }); }
+
+// ======= TOAST =======
+function showToast(msg, icon = '✅') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = icon;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ======= VALIDATION =======
+function validateEmail(input, errId) {
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value);
+  input.classList.toggle('error', !valid && input.value);
+  input.classList.toggle('success', valid);
+  document.getElementById(errId).classList.toggle('show', !valid && input.value.length > 0);
+  return valid;
+}
+
+function validateLoginEmail(input) { validateEmail(input, 'loginEmailErr'); }
+function validateLoginPass(input) {
+  const valid = input.value.length >= 8;
+  document.getElementById('loginPassErr').classList.toggle('show', !valid && input.value.length > 0);
+  return valid;
+}
+
+function validateRequired(input, errId, msg) {
+  const valid = input.value.trim().length > 0;
+  input.classList.toggle('error', !valid && input.value !== undefined);
+  input.classList.toggle('success', valid);
+  document.getElementById(errId).classList.toggle('show', !valid && input.value !== undefined);
+  return valid;
+}
+
+function validatePhone(input, errId) {
+  const valid = /^\+?[\d\s\-]{8,}$/.test(input.value);
+  input.classList.toggle('error', !valid && input.value);
+  input.classList.toggle('success', valid);
+  document.getElementById(errId).classList.toggle('show', !valid && input.value.length > 0);
+  return valid;
+}
+
+function validateMatch(input, errId) {
+  const pass = document.getElementById('s1Pass').value;
+  const valid = input.value === pass && input.value.length > 0;
+  input.classList.toggle('error', !valid && input.value);
+  input.classList.toggle('success', valid);
+  document.getElementById(errId).classList.toggle('show', !valid && input.value.length > 0);
+  return valid;
+}
+
+function validateAge(input) {
+  const dob = new Date(input.value);
+  const now = new Date();
+  const age = (now - dob) / (1000 * 60 * 60 * 24 * 365.25);
+  const valid = age >= 18;
+  document.getElementById('s3DobErr').classList.toggle('show', !valid && input.value);
+  return valid;
+}
+
+// ======= PASSWORD STRENGTH =======
+function checkStrength(input) {
+  const v = input.value;
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  const colors = ['var(--error)', 'var(--red)', 'var(--gold)', 'var(--green)'];
+  for(let i = 1; i <= 4; i++) {
+    const seg = document.getElementById('str'+i);
+    seg.style.background = i <= score ? colors[score-1] : 'rgba(255,255,255,0.1)';
+  }
+}
+
+function togglePass(id, btn) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+// ======= OTP =======
+function otpNext(input, n) {
+  if (input.value.length === 1 && n < 6) {
+    document.getElementById('otp' + (n+1)).focus();
+  }
+}
+
+let timerSecs = 300;
+function startTimer() {
+  clearInterval(otpTimerInterval);
+  timerSecs = 300;
+  otpTimerInterval = setInterval(() => {
+    timerSecs--;
+    const m = String(Math.floor(timerSecs/60)).padStart(2,'0');
+    const s = String(timerSecs%60).padStart(2,'0');
+    const el = document.getElementById('otpTimer');
+    if(el) el.textContent = m+':'+s;
+    if(timerSecs <= 0) clearInterval(otpTimerInterval);
+  }, 1000);
+}
+
+function restartTimer() { startTimer(); showToast('New code sent to your email', '📧'); }
+
+// ======= STEPS =======
+function showStep(n) {
+  signupStep = n;
+  ['step1','step2','step3','step4','stepSuccess'].forEach((s,i) => {
+    document.getElementById(s).style.display = i === (n-1) ? 'block' : 'none';
+  });
+  // Update dots
+  for(let i = 1; i <= 4; i++) {
+    const d = document.getElementById('sd'+i);
+    if(d) {
+      d.classList.remove('active','done');
+      if(i < n) d.classList.add('done');
+      else if(i === n) d.classList.add('active');
+    }
+  }
+}
+
+function backStep(n) { showStep(n); }
+
+function goStep2() {
+  const first = document.getElementById('s1First').value.trim();
+  const last = document.getElementById('s1Last').value.trim();
+  const email = document.getElementById('s1Email').value.trim();
+  const phone = document.getElementById('s1Phone').value.trim();
+  const pass = document.getElementById('s1Pass').value;
+  const pass2 = document.getElementById('s1Pass2').value;
+
+  if(!first || !last || !email || !phone || !pass || !pass2) {
+    showToast('Please fill in all fields', '⚠️');
+    return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Please enter a valid email', '⚠️');
+    return;
+  }
+  if(pass.length < 8) { showToast('Password must be at least 8 characters', '⚠️'); return; }
+  if(pass !== pass2) { showToast('Passwords do not match', '⚠️'); return; }
+
+  document.getElementById('emailDisplay').textContent = email;
+  showStep(2);
+  startTimer();
+}
+
+function verifyOTP() {
+  const otp = ['otp1','otp2','otp3','otp4','otp5','otp6'].map(id => document.getElementById(id).value).join('');
+  if(otp.length < 6) { showToast('Please enter all 6 digits', '⚠️'); return; }
+  // Simulate: accept any 6-digit code
+  clearInterval(otpTimerInterval);
+  showToast('Email verified!', '✅');
+  setTimeout(() => showStep(3), 600);
+}
+
+function goStep4() {
+  const dob = document.getElementById('s3Dob').value;
+  const country = document.getElementById('s3Country').value;
+  if(!dob) { showToast('Please enter your date of birth', '⚠️'); return; }
+  if(!validateAge(document.getElementById('s3Dob'))) { showToast('You must be 18+ to join', '⚠️'); return; }
+  if(!country) { showToast('Please select your country', '⚠️'); return; }
+  showStep(4);
+}
+
+function toggleGenre(el) {
+  const selected = document.querySelectorAll('.genre-chip.selected');
+  if(el.classList.contains('selected')) {
+    el.classList.remove('selected');
+  } else if(selected.length < 3) {
+    el.classList.add('selected');
+  } else {
+    showToast('Maximum 3 genres allowed', '⚠️');
+  }
+}
+
+function updateDocHint() {
+  const val = document.getElementById('kycDocType').value;
+  const hints = {
+    national_id: 'Ensure your <strong>National ID</strong> is valid and not expired. Upload both front and back clearly showing your photo, name, and ID number.',
+    passport: 'Upload the <strong>photo/bio data page</strong> of your passport. Must be within validity period. Back upload is optional for passports.',
+    drivers: 'Upload both sides of your <strong>Driver\'s Licence</strong>. The licence must be government-issued and currently valid.',
+    voter: 'Upload your <strong>Voter Registration Card</strong>. Both sides required. The card must show your full name and ID number clearly.'
+  };
+  const box = document.getElementById('docHintBox');
+  if(val && hints[val]) {
+    document.getElementById('docHintText').innerHTML = hints[val];
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function handleUpload(input, previewId) {
+  const file = input.files[0];
+  if(file) {
+    const preview = document.getElementById(previewId);
+    preview.textContent = '✅ ' + file.name;
+    preview.style.display = 'block';
+  }
+}
+
+function submitKYC() {
+  const docType = document.getElementById('kycDocType').value;
+  const idNum = document.getElementById('kycIdNum').value.trim();
+  const consent = document.getElementById('kycConsent').checked;
+  const ageCheck = document.getElementById('kycAge').checked;
+
+  if(!docType) { showToast('Please select a document type', '⚠️'); return; }
+  if(!idNum) { showToast('Please enter your ID number', '⚠️'); return; }
+  if(!consent || !ageCheck) { showToast('Please accept all agreements', '⚠️'); return; }
+
+  showToast('Submitting your documents...', '⏳');
+  setTimeout(() => {
+    currentUser = { name: document.getElementById('s1First').value + ' ' + document.getElementById('s1Last').value };
+    document.getElementById('stepSuccess').style.display = 'block';
+    ['step1','step2','step3','step4'].forEach(s => document.getElementById(s).style.display = 'none');
+    for(let i = 1; i <= 4; i++) {
+      const d = document.getElementById('sd'+i);
+      if(d) { d.classList.remove('active'); d.classList.add('done'); }
+    }
+  }, 1200);
+}
+
+function completeSignup() {
+  closeModal('signupModal');
+  document.querySelector('.btn-login').style.display = 'none';
+  document.querySelector('.btn-signup').style.display = 'none';
+  document.getElementById('userBtn').style.display = 'flex';
+  showToast('Welcome to MovieZone! 🎬 Start exploring!', '🎉');
+}
+
+// ======= LOGIN HANDLER =======
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
+  if(!email || !pass) { showToast('Please fill in all fields', '⚠️'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Invalid email address', '⚠️'); return; }
+  if(pass.length < 8) { showToast('Invalid password', '⚠️'); return; }
+
+  showToast('Signing you in...', '⏳');
+  setTimeout(() => {
+    currentUser = { name: 'Member' };
+    closeModal('loginModal');
+    document.querySelector('.btn-login').style.display = 'none';
+    document.querySelector('.btn-signup').style.display = 'none';
+    document.getElementById('userBtn').style.display = 'flex';
+    showToast('Welcome back to MovieZone! 🎬', '🎉');
+  }, 1000);
+}
+
+function showUserMenu() {
+  showToast('My Account — Coming Soon', '👤');
+}
+
+function requireLogin() {
+  if(!currentUser) {
+    showToast('Sign in to watch this film', '🔐');
+    setTimeout(() => openLogin(), 500);
+  } else {
+    showToast('Loading film...', '🎬');
+  }
+}
+
+function handlePlayStream() {
+  if(!currentUser) {
+    showToast('Sign in to watch the live stream', '🔐');
+    setTimeout(() => openLogin(), 500);
+  } else {
+    showToast('Connecting to live stream...', '📡');
+  }
+}
+
+// Keyboard: ESC to close modals
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+  }
+});
+</script>
+</body>
+</html>
